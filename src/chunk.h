@@ -7,10 +7,10 @@
 typedef enum { OP_CONSTANT, OP_RETURN } OpCode;
 
 typedef struct {
-  int count;
+  int count; // count of codes (size of code array)
   int capacity;
-  uint8_t *code;
-  int *lines;
+  uint8_t *code; // stores codes
+  int *lines;    // stores line seperately
   ValueArray constants;
 } Chunk;
 

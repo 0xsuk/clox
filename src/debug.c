@@ -16,11 +16,14 @@ static int simpleInstruction(const char *name, int offset) {
 }
 
 static int constantInstruction(const char *name, Chunk *chunk, int offset) {
-  uint8_t constant = chunk->code[offset + 1];
+  uint8_t constant =
+      chunk->code[offset +
+                  1]; // constant is the offset of constnat stored in ValueArray
   printf("%-16s %04d '", name, constant);
   printValue(chunk->constants.values[constant]);
   printf("\n");
-  return offset + 2;
+  return offset + 2; // offset is OP_CONSTANT, offset + 1 is constant (the
+                     // offset), offset + 2 is next instruction
 }
 
 int disassembleInstruction(Chunk *chunk, int offset) {

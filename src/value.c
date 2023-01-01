@@ -16,7 +16,7 @@ void writeValueArray(ValueArray *array, Value value) {
         GROW_ARRAY(Value, array->values, oldCapacity, array->capacity);
   }
 
-  array->values[array->count] = value;
+  array->values[array->count] = value; // values[count] is the last element
   array->count++;
 }
 

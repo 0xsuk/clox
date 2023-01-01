@@ -9,7 +9,7 @@ typedef struct {
   int capacity;
   int count;
   Value *values;
-} ValueArray;
+} ValueArray; // constant pool
 
 void initValueArray(ValueArray *array);
 void writeValueArray(ValueArray *array, Value value);
