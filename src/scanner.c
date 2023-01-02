@@ -190,13 +190,13 @@ Token scanToken() {
   skipWhitespace();
   scanner.start = scanner.current;
 
-  if (!isAtEnd())
+  if (isAtEnd())
     return makeToken(TOKEN_EOF);
 
   char c = advance();
 
   if (isAlpha(c))
-    identifier(c);
+    return identifier(c);
   if (isDigit(c))
     return number();
 
