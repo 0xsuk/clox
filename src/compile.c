@@ -161,6 +161,22 @@ static void binary() {
   }
 }
 
+static void literal() {
+  switch (parser.previous.type) {
+  case TOKEN_FALSE:
+    emitByte(OP_FALSE);
+    break;
+  case TOKEN_NIL:
+    emitByte(OP_NIL);
+    break;
+  case TOKEN_TRUE:
+    emitByte(OP_TRUE);
+    break;
+  default:
+    return;
+  }
+}
+
 static void expression() { parsePrecedence(PREC_ASSIGNMENT); }
 
 static void grouping() {
@@ -216,17 +232,17 @@ ParseRule rules[] = {
     [TOKEN_AND] = {NULL, NULL, PREC_NONE},
     [TOKEN_CLASS] = {NULL, NULL, PREC_NONE},
     [TOKEN_ELSE] = {NULL, NULL, PREC_NONE},
-    [TOKEN_FALSE] = {NULL, NULL, PREC_NONE},
+    [TOKEN_FALSE] = {literal, NULL, PREC_NONE},
     [TOKEN_FOR] = {NULL, NULL, PREC_NONE},
     [TOKEN_FUN] = {NULL, NULL, PREC_NONE},
     [TOKEN_IF] = {NULL, NULL, PREC_NONE},
-    [TOKEN_NIL] = {NULL, NULL, PREC_NONE},
+    [TOKEN_NIL] = {literal, NULL, PREC_NONE},
     [TOKEN_OR] = {NULL, NULL, PREC_NONE},
     [TOKEN_PRINT] = {NULL, NULL, PREC_NONE},
     [TOKEN_RETURN] = {NULL, NULL, PREC_NONE},
     [TOKEN_SUPER] = {NULL, NULL, PREC_NONE},
     [TOKEN_THIS] = {NULL, NULL, PREC_NONE},
-    [TOKEN_TRUE] = {NULL, NULL, PREC_NONE},
+    [TOKEN_TRUE] = {literal, NULL, PREC_NONE},
     [TOKEN_VAR] = {NULL, NULL, PREC_NONE},
     [TOKEN_WHILE] = {NULL, NULL, PREC_NONE},
     [TOKEN_ERROR] = {NULL, NULL, PREC_NONE},
@@ -261,8 +277,8 @@ bool compile(const char *source, Chunk *chunk) {
  * is * STAR, so back to unary function (The caller of parsePrecedence(UNARY))
  */
 /* OP_NEGATE pushed to chunk, unary done, back to parsePrecedence */
-/* precedence (ASSOC) is <= getRule(parser.current.type)->prec which is STAR, so
- * while loop */
+/* precedence (ASSOC) is <= getRule(parser.current.type)->prec which is STAR,
+ * so while loop */
 /* parser.current is 2 */
 /* infixRule for previous * is binary  */
 /* prec for * is FACTOR */
@@ -274,5 +290,5 @@ bool compile(const char *source, Chunk *chunk) {
  * done, so back to binary */
 /* operatorType is *, OP_MULTIPLY pushed to chunk, binary done, back to while
  * loop */
-/* precedence (ASSOC) is <= getRule(parser.current.type)->prec which is PLUS, so
- * while loop goes on */
+/* precedence (ASSOC) is <= getRule(parser.current.type)->prec which is PLUS,
+ * so while loop goes on */
