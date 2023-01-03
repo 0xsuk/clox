@@ -1,0 +1,9 @@
+credit goes to https://craftinginterpreters.com
+* Overview
+interpret() compile() code, and run() in VM.
+compile() reads whole code, report compile error if needed.
+compile() reads token from scanner each time it advance() the parser.current
+then parse expression(), which parses code with respect to precedence sequentially, emitting op codes
+
+VM executes op code in sequence.
+during execution, constants are pushed to the vm.stack, and the constants at the top of the stack is the one op code operates on.
