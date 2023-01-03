@@ -7,3 +7,7 @@ then parse expression(), which parses code with respect to precedence sequential
 
 VM executes op code in sequence.
 during execution, constants are pushed to the vm.stack, and the constants at the top of the stack is the one op code operates on.
+
+
+** values
+for small values, like number, use vm.stack. for larger, like string, use heap.
