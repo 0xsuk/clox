@@ -11,6 +11,7 @@ typedef struct {
   Value stack[STACK_MAX];
   Value *stackTop; // points to the just *past* the array. For empty array,
                    // stackTop points at element zero
+  Obj *objects;
 } VM;
 
 typedef enum {
@@ -18,6 +19,8 @@ typedef enum {
   INTERPRET_COMPILE_ERROR,
   INTERPRET_RUNTIME_ERROR
 } InterpreterResult;
+
+extern VM vm;
 
 void initVM();
 void freeVM();
