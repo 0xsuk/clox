@@ -206,6 +206,13 @@ static void literal() {
 
 static void expression() { parsePrecedence(PREC_ASSIGNMENT); }
 
+// evaluates expression, and discards (pop) the result
+static void expressionStatement() {
+  expression();
+  consume(TOKEN_SEMICOLON, "Expect ';' after exprssion.");
+  emitByte(OP_POP);
+}
+
 static void printStatement() {
   expression();
   consume(TOKEN_SEMICOLON, "Expect ';' after value.");
@@ -219,6 +226,8 @@ static void declaration() { statement(); }
 static void statement() {
   if (match(TOKEN_PRINT)) {
     printStatement();
+  } else {
+    expressionStatement();
   }
 }
 
