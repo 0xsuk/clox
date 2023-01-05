@@ -4,6 +4,7 @@
 #define STACK_MAX 256 // for now its fixed size
 
 #include "chunk.h"
+#include "table.h"
 
 typedef struct {
   Chunk *chunk;
@@ -11,6 +12,7 @@ typedef struct {
   Value stack[STACK_MAX];
   Value *stackTop; // points to the just *past* the array. For empty array,
                    // stackTop points at element zero
+  Table strings;
   Obj *objects;
 } VM;
 
