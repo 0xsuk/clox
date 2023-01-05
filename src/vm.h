@@ -12,6 +12,7 @@ typedef struct {
   Value stack[STACK_MAX];
   Value *stackTop; // points to the just *past* the array. For empty array,
                    // stackTop points at element zero
+  Table globals;
   Table strings;
   Obj *objects;
 } VM;

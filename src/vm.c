@@ -26,10 +26,12 @@ static void runtimeError(const char *format, ...) { // TODO?
 void initVM() {
   resetStack();
   vm.objects = NULL;
+  initTable(&vm.globals);
   initTable(&vm.strings);
 }
 
 void freeVM() {
+  freeTable(&vm.globals);
   freeTable(&vm.strings);
   freeObjects();
 }
@@ -72,6 +74,8 @@ static InterpreterResult run() {
              // next
 #define READ_CONSTANT() (vm.chunk->constants.values[READ_BYTE()])
 
+#define READ_STRING() AS_STRING(READ_CONSTANT())
+
 #define BINARY_OP(valueType, op)                                               \
   do {                                                                         \
     if (!IS_NUMBER(peek(0)) || !IS_NUMBER(peek(1))) {                          \
@@ -82,9 +86,14 @@ static InterpreterResult run() {
     double a = AS_NUMBER(pop());                                               \
     push(valueType(a op b));                                                   \
   } while (false)
+
+#ifdef DEBUG_TRACE_EXECUTION
+  printf("\n\nDEBUG_TRACE_EXECUTION");
+#endif
+
   for (;;) {
 #ifdef DEBUG_TRACE_EXECUTION
-    printf("          ");
+    printf("\nSTACK     ");
     // show every content of the stack
     for (Value *slot = vm.stack; slot < vm.stackTop; slot++) {
       printf("[ ");
@@ -92,11 +101,13 @@ static InterpreterResult run() {
       printf(" ]");
     }
     printf("\n");
+    // vm.ip - vm.chunk->code; // THIS CAUSE ERROR??
     disassembleInstruction(
         vm.chunk,
         (int)(vm.ip -
               vm.chunk->code)); // the offset of current code is provided
 #endif
+
     uint8_t instruction;
     switch (instruction = READ_BYTE()) {
     case OP_CONSTANT: {
@@ -164,15 +175,20 @@ static InterpreterResult run() {
     case OP_POP:
       pop();
       break;
+    case OP_DEFINE_GLOBAL: {
+      ObjString *name = READ_STRING();
+      tableSet(&vm.globals, name, peek(0));
+      pop();
+      break;
+    }
     case OP_RETURN:
-      printValue(pop()); // just for now
-      printf("\n");
       return INTERPRET_OK; // return for now
     }
   }
 
 #undef READ_BYTE
 #undef READ_CONSTANT
+#undef READ_STRING
 #undef BINARY_OP
 }
 

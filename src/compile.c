@@ -124,7 +124,7 @@ static void endCompilier() {
   emitReturn();
 #ifdef DEBUG_PRINT_CODE
   if (!parser.hadError) {
-    disassembleChunk(currentChunk(), "code");
+    disassembleChunk(currentChunk(), "Compiling finished. Disassembling chunk");
   }
 #endif
 }
@@ -145,6 +145,19 @@ static void parsePrecedence(Precedence precedence) {
     ParseFn infixRule = getRule(parser.previous.type)->infix;
     infixRule();
   }
+}
+
+static uint8_t identifierConstant(Token *name) {
+  return makeConstant(OBJ_VAL(copyString(name->start, name->length)));
+}
+
+static uint8_t parseVariable(const char *errorMessage) {
+  consume(TOKEN_IDENTIFIER, errorMessage);
+  return identifierConstant(&parser.previous);
+}
+
+static void defineVariable(uint8_t global) {
+  emitBytes(OP_DEFINE_GLOBAL, global);
 }
 
 static void binary() {
@@ -206,6 +219,19 @@ static void literal() {
 
 static void expression() { parsePrecedence(PREC_ASSIGNMENT); }
 
+static void varDeclaration() {
+  uint8_t global = parseVariable("Expect variable name.");
+
+  if (match(TOKEN_EQUAL)) {
+    expression();
+  } else {
+    emitByte(OP_NIL); // NIL initialize empty declaration
+  }
+  consume(TOKEN_SEMICOLON, "Expect ';' after variable declaration.");
+
+  defineVariable(global);
+}
+
 // evaluates expression, and discards (pop) the result
 static void expressionStatement() {
   expression();
@@ -222,7 +248,6 @@ static void printStatement() {
 // move to the next statement
 static void synchronize() {
   parser.panicMode = false;
-
   while (parser.current.type != TOKEN_EOF) {
     if (parser.previous.type == TOKEN_SEMICOLON)
       return;
@@ -246,7 +271,12 @@ static void synchronize() {
 static void statement();
 
 static void declaration() {
-  statement();
+  if (match(TOKEN_VAR)) {
+    varDeclaration();
+  } else {
+    statement();
+  }
+
   if (parser.panicMode)
     synchronize();
 }
