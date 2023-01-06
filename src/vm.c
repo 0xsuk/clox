@@ -199,6 +199,22 @@ static InterpreterResult run() {
       pop();
       break;
     }
+    case OP_GET_LOCAL: {
+      uint8_t slot = READ_BYTE(); // get from vm.chunk the offset to local
+                                  // variable's value in constant table
+      push(vm.stack[slot]); // other instructions look for the top of stack. so
+                            // we have to take variable identifier string from
+                            // the vm.stack and push again to the top of the
+                            // stack, accepting duplicate string in memory
+      break;
+    }
+    case OP_SET_LOCAL: {
+      uint8_t slot = READ_BYTE();
+      vm.stack[slot] = peek(
+          0); // expression() parses and emits op code that pushes to the top of
+              // the stack the evaluation result of the right hand operand
+      break;
+    }
     case OP_RETURN:
       return INTERPRET_OK; // return for now
     }

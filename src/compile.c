@@ -39,12 +39,16 @@ typedef struct {
 
 typedef struct {
   Token name;
-  int depth;
+  int depth; //-1 says local variable is not initialized
 } Local;
 
 typedef struct {
   Local locals[UINT8_COUNT]; // has a limit, because instruction operand we'll
-                             // use to encode a local is a single byte
+                             // use to encode a local is a single byte. index of
+                             // LOCALS CORRESPONDS TO INDEX OF STACK THAT HOLDS
+                             // VARIABLE'S VALUE, because inside {}, every thing
+                             // that vm.stack carries over is local variable's
+                             // VALUE!!
   int localCount;
   int scopeDepth;
 } Compiler; // holds all local variables in the declaration order
@@ -187,6 +191,8 @@ static void parsePrecedence(Precedence precedence) {
   }
 }
 
+// pushes global variable identifier string to constant table, returns offset of
+// identifier constant in chunk->constants
 static uint8_t identifierConstant(Token *name) {
   return makeConstant(OBJ_VAL(copyString(name->start, name->length)));
 }
@@ -197,6 +203,21 @@ static bool identifiersEqual(Token *a, Token *b) {
   return memcmp(a->start, b->start, a->length) == 0;
 }
 
+// returns index of local variable in compiler->locals
+static int resolveLocal(Compiler *compiler, Token *name) {
+  for (int i = compiler->localCount - 1; i >= 0; i--) {
+    Local *local = &compiler->locals[i];
+    if (identifiersEqual(name, &local->name)) {
+      if (local->depth == -1) {
+        error("Can't read local variable in its own initializer.");
+      }
+      return i;
+    }
+  }
+
+  return -1;
+}
+
 static void addLocal(Token name) {
   if (current->localCount == UINT8_COUNT) {
     error("Too many local variables in function.");
@@ -205,7 +226,7 @@ static void addLocal(Token name) {
 
   Local *local = &current->locals[current->localCount++];
   local->name = name;
-  local->depth = current->scopeDepth;
+  local->depth = -1;
 }
 
 static void declareVariable() {
@@ -217,8 +238,7 @@ static void declareVariable() {
   for (int i = current->localCount - 1; i >= 0; i--) {
     Local *local = &current->locals[i];
     if (local->depth != -1 &&
-        local->depth <
-            current->scopeDepth) { // TODO what is -1 //{var a; {var a;}} is ok
+        local->depth < current->scopeDepth) { //{var a; {var a;}} is ok
       break;
     }
 
@@ -235,10 +255,22 @@ static uint8_t parseVariable(const char *errorMessage) {
   declareVariable();
   if (current->scopeDepth > 0)
     return 0;
-  return identifierConstant(&parser.previous);
+  return identifierConstant(&parser.previous); // only add identifier string to
+                                               // constant table if it is global
+}
+
+static void markInitialized() {
+  current->locals[current->localCount - 1].depth = current->scopeDepth;
 }
 
 static void defineVariable(uint8_t global) {
+
+  if (current->scopeDepth > 0) {
+    // define local variable
+    markInitialized();
+    return;
+  }
+
   emitBytes(OP_DEFINE_GLOBAL, global);
 }
 
@@ -397,16 +429,28 @@ static void string(bool canAssign) {
 }
 
 static void namedVariable(Token name, bool canAssign) {
-  uint8_t arg = identifierConstant(&name);
+  uint8_t getOp, setOp;
+  // the offset of the local variable
+  int arg = resolveLocal(current, &name);
+  if (arg != -1) {
+    getOp = OP_GET_LOCAL;
+    setOp = OP_SET_LOCAL;
+  } else {
+    // the offset of the global variable's identifier string
+    arg = identifierConstant(&name);
+    getOp = OP_GET_GLOBAL;
+    setOp = OP_SET_GLOBAL;
+  }
 
   if (canAssign && match(TOKEN_EQUAL)) {
     expression();
-    emitBytes(OP_SET_GLOBAL, arg);
+    emitBytes(setOp, (uint8_t)arg); // TODO: ? vm.stack[arg] -> variable's value
   } else {
-    emitBytes(OP_GET_GLOBAL, arg);
+    emitBytes(getOp, (uint8_t)arg);
   }
 }
 
+// resolves variable use, not declaration/definition
 static void variable(bool canAssign) {
   namedVariable(parser.previous, canAssign);
 }
