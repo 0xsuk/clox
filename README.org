@@ -14,8 +14,8 @@ for small values, like number, use vm.stack. for larger, like string, use heap.
 
 * Grammer
 #+begin_src text
-statement = exprStmt
-          | printStmt;
-declaration = varDecl
-            | statement;
+statement = exprStmt | printStmt | block;
+
+block = "{" declaration* "}";
+declaration = varDecl | statement;
 #+end_src
