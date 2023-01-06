@@ -13,9 +13,9 @@ during execution, constants are pushed to the vm.stack, and the constants at the
 for small values, like number, use vm.stack. for larger, like string, use heap.
 
 * Grammer
-#+begin_text text
+#+begin_src text
 statement = exprStmt
           | printStmt;
 declaration = varDecl
             | statement;
-#+end_text
+#+end_src
