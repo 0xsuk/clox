@@ -36,7 +36,20 @@ typedef struct {
   Precedence precedence;
 } ParseRule;
 
+typedef struct {
+  Token name;
+  int depth;
+} Local;
+
+typedef struct {
+  Local locals[UINT8_COUNT]; // has a limit, because instruction operand we'll
+                             // use to encode a local is a single byte
+  int localCount;
+  int scopeDepth;
+} Compiler; // holds all local variables in the declaration order
+
 Parser parser;
+Compiler *current = NULL;
 Chunk *compilingChunk;
 
 static Chunk *currentChunk() { return compilingChunk; }
@@ -118,6 +131,12 @@ static uint8_t makeConstant(Value value) {
 
 static void emitConstant(Value value) {
   emitBytes(OP_CONSTANT, makeConstant(value));
+}
+
+static void initCompiler(Compiler *compiler) {
+  compiler->localCount = 0;
+  compiler->scopeDepth = 0;
+  current = compiler;
 }
 
 static void endCompilier() {
@@ -390,6 +409,8 @@ static ParseRule *getRule(TokenType type) { return &rules[type]; }
 
 bool compile(const char *source, Chunk *chunk) {
   initScanner(source);
+  Compiler compiler;
+  initCompiler(&compiler);
   parser.hadError = false;
   parser.panicMode = false;
   compilingChunk = chunk;
