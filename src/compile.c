@@ -418,9 +418,17 @@ static void ifStatement() {
   // to 3. to make it point to 10, increment 7)
 
   int thenJump = emitJump(OP_JUMP_IF_FALSE);
+  emitByte(OP_POP); // pops condition value vm pushes evaluating condition
   statement();
 
+  int elseJump = emitJump(OP_JUMP);
+
   patchJump(thenJump);
+  emitByte(OP_POP);
+
+  if (match(TOKEN_ELSE))
+    statement();
+  patchJump(elseJump);
 }
 
 static void printStatement() {
