@@ -124,6 +124,16 @@ static void emitBytes(uint8_t byte1, uint8_t byte2) {
   emitByte(byte2);
 }
 
+static int emitJump(uint8_t instruction) {
+  emitByte(instruction);
+  emitByte(0xff); // A 2 bytes (16-bit) offset lets us jump over up to 65,535
+                  // bytes of
+  emitByte(0xff); // code, which should be plenty for our needs.
+
+  return currentChunk()->count - 2; // offset of emiited instruction (the first
+                                    // 0xff) in the chunk
+}
+
 static void emitReturn() { emitByte(OP_RETURN); }
 
 static uint8_t makeConstant(Value value) {
@@ -139,6 +149,20 @@ static uint8_t makeConstant(Value value) {
 
 static void emitConstant(Value value) {
   emitBytes(OP_CONSTANT, makeConstant(value));
+}
+
+static void patchJump(int offset) {
+  int jump = currentChunk()->count - offset - 2; // amount vm increments ip
+
+  if (jump > UINT16_MAX) { // in emitJump 2 bytes (16 bits) is reserved for jump
+                           // instruction
+    error("Too much code to jump over.");
+  }
+
+  currentChunk()->code[offset] =
+      (jump >> 8) & 0xff; // set first half jump address. think of 0xff as
+                          // 0x00ff (0000000011111111), which zeros upper 8 bits
+  currentChunk()->code[offset + 1] = jump & 0xff; // set second half
 }
 
 static void initCompiler(Compiler *compiler) {
@@ -188,6 +212,7 @@ static void parsePrecedence(Precedence precedence) {
 
   if (canAssign && match(TOKEN_EQUAL)) {
     error("Invalid assignment target.");
+    // TODO: try adding return
   }
 }
 
@@ -210,6 +235,7 @@ static int resolveLocal(Compiler *compiler, Token *name) {
     if (identifiersEqual(name, &local->name)) {
       if (local->depth == -1) {
         error("Can't read local variable in its own initializer.");
+        // TODO: try adding return
       }
       return i;
     }
@@ -244,6 +270,7 @@ static void declareVariable() {
 
     if (identifiersEqual(name, &local->name)) {
       error("Already a variable with this name in this scope.");
+      // TODO try adding return
     }
   }
   addLocal(*name);
@@ -361,6 +388,41 @@ static void expressionStatement() {
   emitByte(OP_POP);
 }
 
+static void ifStatement() {
+  consume(TOKEN_LEFT_PAREN, "Expect '(' after 'if'.");
+  expression();
+  consume(TOKEN_RIGHT_PAREN, "Expect ')' after condition.");
+
+  // if (condition) {
+  //   //at this point, compiler does not know where to jump.
+  //   //so for now let jump destination be 2 bytes temporary value. (0xff 0xff)
+  //   //And push jump address to chunk->code, and remember the offset. so that
+  //   we can patch later.
+  //
+  //    statements;
+  // }
+  // statements; <- thenJump is offset to here in the chunk->code.
+  // chunk->code[offset] is where jump address to here resides.
+  // the amount of code vm has to jump is, (at this point) currentChunk()->count
+  // - offset - 2;
+  //
+  // [EXAMPLE chunk->code layout]
+  // 0 JUMP_IF_FALSE
+  // 1 first half jump offset
+  // 2 second half jump offset (VM jumps after reading 2)
+  // 3 instructions added by statement parser
+  //.. instructions added by statement parser
+  // 10 (jump here)
+  // At this point, amount of code vm has to jump after 2 if condition is false
+  // is 10 - 1 - 2 = 7; (note that after reading 1,2 with READ_SHORT ip points
+  // to 3. to make it point to 10, increment 7)
+
+  int thenJump = emitJump(OP_JUMP_IF_FALSE);
+  statement();
+
+  patchJump(thenJump);
+}
+
 static void printStatement() {
   expression();
   consume(TOKEN_SEMICOLON, "Expect ';' after value.");
@@ -404,6 +466,8 @@ static void declaration() {
 static void statement() {
   if (match(TOKEN_PRINT)) {
     printStatement();
+  } else if (match(TOKEN_IF)) {
+    ifStatement();
   } else if (match(TOKEN_LEFT_BRACE)) {
     beginScope();
     block();
