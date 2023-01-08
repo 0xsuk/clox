@@ -160,8 +160,12 @@ static void patchJump(int offset) {
   }
 
   currentChunk()->code[offset] =
-      (jump >> 8) & 0xff; // set first half jump address. think of 0xff as
-                          // 0x00ff (0000000011111111), which zeros upper 8 bits
+      (jump >> 8) & // take the firs half 8 bits of "jump"
+      0xff;         // set first half jump address. think of 0xff as 0x00ff
+            // (0000000011111111), which zeros upper 8 bits. jump is int, 4
+            // bytes, code[somepoint] is uint8 (1 byte). 0xff is also 1 byte. so
+            // 0xff downcast jump from int to uint8_t. But this is unnecessary.
+            // Just for readability
   currentChunk()->code[offset + 1] = jump & 0xff; // set second half
 }
 
@@ -407,21 +411,24 @@ static void ifStatement() {
   // - offset - 2;
   //
   // [EXAMPLE chunk->code layout]
-  // 0 JUMP_IF_FALSE
-  // 1 first half jump offset
-  // 2 second half jump offset (VM jumps after reading 2)
-  // 3 instructions added by statement parser
+  // 0001 JUMP_IF_FALSE         0001 -> 0011
+  // 0002 first half jump offset   //offset "thenJump" is 0002
+  // 0003 second half jump offset (VM jumps *after* reading 2, ip->0004)
+  // 0004 OP_POP //pops condition
   //.. instructions added by statement parser
-  // 10 (jump here)
+  // 0008 OP_JUMP
+  // 0009 first half
+  // 0010 second
+  // 0011 OP_POP
   // At this point, amount of code vm has to jump after 2 if condition is false
-  // is 10 - 1 - 2 = 7; (note that after reading 1,2 with READ_SHORT ip points
-  // to 3. to make it point to 10, increment 7)
+  // is 0011 - 0002 - 2 = 7; offset "jump" is 7 in patchJump(thenJump)
 
-  int thenJump = emitJump(OP_JUMP_IF_FALSE);
-  emitByte(OP_POP); // pops condition value vm pushes evaluating condition
+  int thenJump = emitJump(OP_JUMP_IF_FALSE); // skips then
+  emitByte(OP_POP); // pops condition value vm pushes evaluating condition, when
+                    // vm goes to then branch
   statement();
 
-  int elseJump = emitJump(OP_JUMP);
+  int elseJump = emitJump(OP_JUMP); // skips else
 
   patchJump(thenJump);
   emitByte(OP_POP);
