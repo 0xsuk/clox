@@ -1,14 +1,22 @@
 #ifndef clox_vm_h
 #define clox_vm_h
 
-#define STACK_MAX 256 // for now its fixed size
-
 #include "chunk.h"
+#include "object.h"
 #include "table.h"
 
+#define FRAMES_MAX 64
+#define STACK_MAX (FRAMES_MAX * UINT8_COUNT) // for now its fixed size
+
 typedef struct {
-  Chunk *chunk;
-  uint8_t *ip; // pointer to the next instruction
+  ObjFunction *function;
+  uint8_t *ip;
+  Value *slots;
+} CallFrame;
+
+typedef struct {
+  CallFrame frames[FRAMES_MAX];
+  int frameCount;
   Value stack[STACK_MAX];
   Value *stackTop; // points to the just *past* the array. For empty array,
                    // stackTop points at element zero
