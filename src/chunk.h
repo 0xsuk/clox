@@ -28,6 +28,7 @@ typedef enum {
   OP_GET_LOCAL,
   OP_SET_LOCAL,
   OP_LOOP,
+  OP_CALL,
   OP_RETURN,
 } OpCode;
 
