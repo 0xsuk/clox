@@ -23,6 +23,14 @@ static void freeObject(Obj *object) {
     FREE(ObjFunction, object);
     break;
   }
+  case OBJ_CLOSURE: {
+    ObjClosure *closure = (ObjClosure *)object;
+    FREE_ARRAY(ObjUpvalue *, closure->upvalues, closure->upvalueCount);
+    FREE(ObjClosure,
+         object); // only free the closure not function, because multiple
+                  // closures could reference the same function(?)
+    break;
+  }
   case OBJ_NATIVE:
     FREE(ObjNative, object);
     break;
@@ -32,6 +40,10 @@ static void freeObject(Obj *object) {
     FREE(ObjString, object);
     break;
   }
+  case OBJ_UPVALUE:
+    FREE(ObjUpvalue, object); // only free ObjUpvalue because multiple closures
+                              // could close over the same variable
+    break;
   }
 }
 
