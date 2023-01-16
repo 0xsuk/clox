@@ -1,4 +1,5 @@
 #include "compile.h"
+#include "memory.h"
 #include "scanner.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -908,3 +909,11 @@ ObjFunction *compile(const char *source) {
  * loop */
 /* precedence (ASSOC) is <= getRule(parser.current.type)->prec which is PLUS,
  * so while loop goes on */
+
+void markCompilerRoots() {
+  Compiler *compiler = current;
+  while (current != NULL) {
+    markObject((Obj *)compiler->function);
+    compiler = compiler->enclosing;
+  }
+}
